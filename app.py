@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-
-
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
@@ -18,11 +16,16 @@ app.title = "Dashboard energia"
 server = app.server
 app.config.suppress_callback_exceptions = True
 
-
 # Load data from csv
 def load_data():
     # Cargar el archivo CSV en un DataFrame
     df = pd.read_csv('datos_energia.csv')
+    
+    # Verificar los nombres de las columnas
+    print("Columnas disponibles en el CSV:", df.columns.tolist())
+    
+    # Renombrar la columna 'time' a 'fecha' para mantener consistencia en el resto del código
+    df.rename(columns={'time': 'fecha'}, inplace=True)
     
     # Convertir la columna de fecha a formato datetime
     df['fecha'] = pd.to_datetime(df['fecha'])
@@ -97,8 +100,6 @@ def plot_series(data, initial_date, proy):
 
     return fig
 
-
-
 def description_card():
     """
     :return: A Div containing dashboard title & descriptions.
@@ -114,7 +115,6 @@ def description_card():
             ),
         ],
     )
-
 
 def generate_control_card():
     """
@@ -138,21 +138,21 @@ def generate_control_card():
                                 min_date_allowed=min(data.index.date),
                                 max_date_allowed=max(data.index.date),
                                 initial_visible_month=min(data.index.date),
-                                date=max(data.index.date)-dt.timedelta(days=7)
+                                date=(max(data.index.date) - dt.timedelta(days=7)).strftime('%Y-%m-%d')
                             )
                         ],
                         style=dict(width='30%')
                     ),
                     
-                    html.P(" ",style=dict(width='5%', textAlign='center')),
+                    html.P(" ", style=dict(width='5%', textAlign='center')),
                     
                     html.Div(
                         id="componente-hora",
                         children=[
                             dcc.Dropdown(
                                 id="dropdown-hora-inicial-hora",
-                                options=[{"label": i, "value": i} for i in np.arange(0,25)],
-                                value=pd.to_datetime(max(data.index)-dt.timedelta(days=7)).hour,
+                                options=[{"label": f"{i:02d}:00", "value": i} for i in range(0,24)],
+                                value=(max(data.index) - dt.timedelta(days=7)).hour,
                                 # style=dict(width='50%', display="inline-block")
                             )
                         ],
@@ -183,7 +183,6 @@ def generate_control_card():
      
         ]
     )
-
 
 app.layout = html.Div(
     id="app-container",
@@ -226,27 +225,32 @@ app.layout = html.Div(
     ],
 )
 
-
 @app.callback(
     Output(component_id="plot_series", component_property="figure"),
-    [Input(component_id="datepicker-inicial", component_property="date"),
-    Input(component_id="dropdown-hora-inicial-hora", component_property="value"),
-    Input(component_id="slider-proyeccion", component_property="value")]
+    [
+        Input(component_id="datepicker-inicial", component_property="date"),
+        Input(component_id="dropdown-hora-inicial-hora", component_property="value"),
+        Input(component_id="slider-proyeccion", component_property="value")
+    ]
 )
 def update_output_div(date, hour, proy):
 
     if ((date is not None) & (hour is not None) & (proy is not None)):
-        hour = str(hour)
-        minute = str(0)
+        hour = str(hour).zfill(2)  # Asegura que la hora tenga dos dígitos
+        minute = "00"
 
-        initial_date = date + " " + hour + ":" + minute
+        initial_date = f"{date} {hour}:{minute}"
         initial_date = pd.to_datetime(initial_date, format="%Y-%m-%d %H:%M")
 
         # Graficar
         plot = plot_series(data, initial_date, int(proy))
         return plot
-
+    else:
+        # Manejo en caso de valores nulos
+        return go.Figure()
 
 # Run the server
 if __name__ == "__main__":
+=======
     app.run_server(host ="0.0.0.0", debug=True)
+>>>>>>> b770a55a12c8114c97c4ff90c811405683491800
